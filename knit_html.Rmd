@@ -1,0 +1,178 @@
+---
+title: "Study_1"
+author: "Ben Spanswick"
+date: "October 17, 2018"
+output: html_document
+---
+
+###Package Import
+
+```{r}
+library(readr)
+library(tables)
+library(dplyr)
+library(plyr)
+library(ggplot2)
+library(RColorBrewer)
+library(psych)
+library(highcharter)
+library(rhandsontable)
+library(xml2)
+library(naniar)
+library(pastecs)
+
+
+```
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r}
+#Import Data
+
+population <- read.table("https://people.sc.fsu.edu/~jburkardt/datasets/census/census_2010.txt")
+Beers <- read_csv("Beers.csv")
+Breweries <- read_csv("Breweries.csv")
+Breweries <- as.data.frame(merge(Breweries, population, all = TRUE))
+Breweries2 <- rename(Breweries, c("Brew_ID" = "Brewery_id", "Name" = "Brewery_Name"))
+
+names(population) <- c("State", "Population")
+
+
+head(Breweries)
+
+```
+
+
+##Question 1 - How many breweries are present in each state?
+
+```{r}
+
+##How many breweries in each state?
+Breweries_Per_State <- table(Breweries$State)
+BPS_DF <- as.data.frame(Breweries_Per_State)
+rhandsontable(head(BPS_DF))
+
+```
+
+
+```{r}
+ggplot(BPS_DF, aes(reorder(Var1, Freq), Freq)) + geom_bar(stat = "identity") +
+geom_col(aes(fill = Freq)) +
+  theme(axis.text.x = element_text(angle = 90, hjust = .5))+
+  scale_fill_gradient2(low = "yellow", 
+                       high = "red",
+                       mid = "orange",
+                       space = "Lab") + 
+  labs(x = "States", y = "Number of Breweries")
+```
+
+
+## Merge beer data with the breweries data. Print the first 6 observations and the last six observations to check the merged file.
+
+```{r}
+Beer_Merge <- as.data.frame(merge(Beers, Breweries2, all = TRUE))
+rhandsontable(head(Beer_Merge, n= 6))
+rhandsontable(tail(Beer_Merge, n= 6))
+
+```
+
+##Reported number of NA's in each column
+
+```{r}
+
+rhandsontable(miss_var_summary(Beer_Merge))
+
+```
+
+```{r}
+
+gg_miss_var(Beer_Merge)
+
+```
+
+##Compute the median alcohol content and international bitterness unit for each state. Plot a bar chart to compare.
+
+```{r}
+
+ABV_IBU <- as.data.frame(aggregate(cbind(Beer_Merge$ABV, Beer_Merge$IBU) ~ Beer_Merge$State, Beer_Merge, median))
+
+names(ABV_IBU) <- c("State", "ABV", "IBU")
+
+rhandsontable(head(ABV_IBU))
+
+```
+
+
+```{r}
+highchart() %>% 
+  hc_yAxis_multiples(
+    list(lineWidth = 3, lineColor='blue', title=list(text="ABV")),
+    list(lineWidth = 3, lineColor="red", title=list(text="IBU"))
+  ) %>% 
+  hc_add_series(data = ABV_IBU$ABV, color='blue', type = "column") %>% 
+  hc_add_series(data = ABV_IBU$IBU, color='red', type = "column", yAxis = 1) %>%
+  hc_xAxis(categories = ABV_IBU$State, title = list(text = "State")) %>%
+  hc_title(text = "<b>Median ABV and IBU by State</b>",
+           margin = 20, align = "center",
+           style = list(color="black", useHTML = TRUE))
+```
+
+##Which state has the maximum alcoholic (ABV) beer? Which state has the most bitter (IBU) beer?
+
+```{r}
+
+MaxABV <- Beer_Merge %>% 
+    slice( which.max(ABV)) %>% 
+    select(State, Name, ABV)
+
+MaxIBU <- Beer_Merge %>% 
+    slice( which.max(IBU)) %>% 
+    select(State, Name, IBU)
+
+
+
+rhandsontable(MaxABV, rowHeaders = NULL)
+rhandsontable(MaxIBU, rowHeaders = NULL)
+
+```
+
+```{r}
+library(maps)
+library(maptools)
+library(sp)
+
+
+dat <- BPS_DF
+names(dat)[1] <-'state.abb'
+dat$states <- tolower(state.name[match(dat$state.abb,  state.abb)])
+
+mapUSA <- map('state',  fill = TRUE,  plot = FALSE)
+nms <- sapply(strsplit(mapUSA$names,  ':'),  function(x)x[1])
+USApolygons <- map2SpatialPolygons(mapUSA,  IDs = nms,  CRS('+proj=longlat'))
+
+idx <- match(unique(nms),  dat$states)
+dat2 <- data.frame(value = dat$Freq[idx], state = unique(nms))
+row.names(dat2) <- unique(nms)
+
+USAsp <- SpatialPolygonsDataFrame(USApolygons,  data = dat2)
+
+spplot(USAsp['value'])
+
+
+```
+
+##Summary statistics for the ABV variable.
+
+```{r}
+
+
+sumStat <- as.data.frame(stat.desc(Beer_Merge$ABV))
+
+rhandsontable(sumStat, rowHEaders=NULL, basic = TRUE)
+
+```
+
+
+
