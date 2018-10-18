@@ -60,6 +60,10 @@ Scatter_plot <- ggplot(Medians, aes(x = Medians$`Beer_Merge$ABV`, y= Medians$`Be
 ```
 
 ```{r}
+
+```
+
+```{r}
 #install.packages("pastecs")
 library(pastecs)
 
