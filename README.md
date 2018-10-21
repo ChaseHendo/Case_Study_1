@@ -7,7 +7,7 @@ This GIT repository contains two important files
 
 1. Project1_final.Rmd - R code for our project.
 
-2. knit_html.html - The html markdown workbook for our porject.
+2. Project1_final.html - The html markdown workbook for our porject.
 
 3. Beer.csv - Provided Beer datasets
 
